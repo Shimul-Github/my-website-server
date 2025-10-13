@@ -29,6 +29,7 @@ async function run() {
 
     const menuCollection = client.db("sundarbanKebapDb").collection('menus');
     const reviewCollection = client.db("sundarbanKebapDb").collection('reviews');
+    const cartCollection = client.db("sundarbanKebapDb").collection('carts');
     // const movies = database.collection("movies");
     // const reviews = database.collection("reviews");
   
@@ -42,6 +43,17 @@ async function run() {
       const result = await reviewCollection.find().toArray();
       res.send(result);
     })
+    // Post FOOD ITEM into CartCollection
+    app.post('/carts', async (req,res) =>{
+      const cartItem = req.body
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result)
+    });
+    // Get carts collection to show in navbar as per user
+    app.get('/carts', async(req,res) =>{
+      const result = await cartCollection.find().toArray();
+      res.send(result)
+    });
 
 
     // Send a ping to confirm a successful connection
@@ -63,3 +75,11 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Sundarbon Server is now running in ${port}`);
 });
+
+/*
+*add.get('/users)
+*add.get('/users/:id)
+*add.post('/users)
+*add.post('/users)
+
+*/
