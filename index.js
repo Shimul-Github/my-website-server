@@ -2,7 +2,7 @@ const express = require("express");
 const helmet = require("helmet");
 const app = express();
 const cors = require("cors");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
@@ -39,23 +39,83 @@ async function run() {
 
     // To get the data from mongodb server we need to go mongodb crud usage examples site with node.js
 
-// jwt related api
-app.post('/jwt', async (req,res) =>{
-  const user = req.body;
-  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn:'1h'
-  });
-res.send({token});
-});
+    // jwt related api
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
 
+    // Middleware : when client side send token to load all users to backend then backend check this token by middleware
+    const verifyToken = (req, res, next) => {
+      // console.log("inside verify token", req.headers);
+      console.log("inside verify token", req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      // {const text = 'Bearer eyJhbGciOiJIUzI1NiI'
+      // undefined
+      // text.sp
+      // undefined
+      // text.split(0)
+      // ['Bearer eyJhbGciOiJIUzI1NiI']
+      // text.split('')
+      // (26) ['B', 'e', 'a', 'r', 'e', 'r', ' ', 'e', 'y', 'J', 'h', 'b', 'G', 'c', 'i', 'O', 'i', 'J', 'I', 'U', 'z', 'I', '1', 'N', 'i', 'I']
+      // text.split(' ')
+      // (2) ['Bearer', 'eyJhbGciOiJIUzI1NiI']
+      // text.split(' ')[1]
+      // 'eyJhbGciOiJIUzI1NiI'}
+      const token = req.headers.authorization.split(" ")[1];
+      // if(!token){
+      //    return res.status(401).send({message:'forbidden access'});
+      // }
+      // Now the verify the TOKEN
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauuthrized Access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
 
+      // next();
+    };
 
-
+    // token verify hoar por amra akon je request ta korteche tar token ta admin token kina seta check korar jonno 
+    const verifyAdmin = async (req,res,next) => {
+    const email = req.decoded.email;
+    const query = {email:email};
+    const user = await userCollection.findOne(query);
+    const isAdmin = user?.role === 'admin';
+    if(!isAdmin){
+      return res.status(403).send({message:'forbidden access'})
+    }
+    next();
+    }
 
     // Get all users
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, async (req, res) => {
+      // client side theke jokhon sokol users load korar jonno admin er token jachai korte hobe then
+      // console.log(req.headers);
       const result = await userCollection.find().toArray();
       res.send(result);
+    });
+    // client side e dashboard e user admin kina seta jachai korar jonno
+    app.get('/users/admin/:email', verifyToken, async(req,res)  => {
+      const email = req.params.email;
+
+      if(email !== req.decoded.email){
+        return res.status(403).send({message:'forbidden access'})
+      }
+      const query = {email:email};
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if(user){
+        admin = user?.role === 'admin';
+      }
+      res.send({admin});
     });
     // Create user collection
     app.post("/users", async (req, res) => {
@@ -71,28 +131,26 @@ res.send({token});
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
-    
 
     // To make one user as admin first time
-    app.patch('/users/admin/:id', async(req,res) =>{
+    app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
-        $set : {
-          role:'admin'
-        }
-      }
-      const result = await userCollection.updateOne(filter,updatedDoc);
-      res.send(result)
-    })
-    // Delete user by Admin
-    app.delete('/users/:id', async (req,res) =>{
-      const id = req.params.id;
-      const query = {_id : new  ObjectId(id)};
-      const result = await userCollection.deleteOne(query);
-      res.send(result)
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
     });
-
+    // Delete user by Admin
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
 
     //  Menu related api s:
     app.get("/menus", async (req, res) => {
