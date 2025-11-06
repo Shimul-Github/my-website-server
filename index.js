@@ -103,7 +103,7 @@ async function run() {
       res.send(result);
     });
     // client side e dashboard e user admin kina seta jachai korar jonno
-    app.get('/users/admin/:email', verifyToken, async(req,res)  => {
+    app.get('/users/admin/:email', verifyToken, verifyAdmin, async(req,res)  => {
       const email = req.params.email;
 
       if(email !== req.decoded.email){
@@ -133,7 +133,7 @@ async function run() {
     });
 
     // To make one user as admin first time
-    app.patch("/users/admin/:id", async (req, res) => {
+    app.patch("/users/admin/:id", verifyToken,verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -145,14 +145,56 @@ async function run() {
       res.send(result);
     });
     // Delete user by Admin
-    app.delete("/users/:id", async (req, res) => {
+    app.delete("/users/:id", verifyToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
     });
+ //  Menu related api s:
+    // Post menu item by admin from client side at add items
+    app.post('/menus',verifyToken,verifyAdmin, async (req,res) => {
+      const menuItem = req.body;
+      const result = await menuCollection.insertOne(menuItem);
+      res.send(result);
 
-    //  Menu related api s:
+    })
+    app.delete('/menus/:id',verifyToken,verifyAdmin, async(req,res) =>{
+      const itemId = req.params.id;
+      const query = {_id: new ObjectId(itemId)};
+      const result = await menuCollection.deleteOne(query)
+      res.send(result)
+
+    })
+//  update a Menu item
+    app.get('/menus/:id', async (req,res) =>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await menuCollection.findOne(query);
+      res.send(result)
+    })
+    // for change a specific value of a menu item do patch
+    app.patch('/menus/:id', async(req,res) =>{
+      const item = req.body;
+      const id = req.params.id;
+      // const query = {_id: new ObjectId(id)};
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set:{
+          name:item.name,
+          category: item.category,
+          price:item.price,
+          recipe:item.recipe,
+          image:item.image
+
+        }
+      }
+      const result = await menuCollection.updateOne(filter,updatedDoc);
+      res.send(result)
+
+    })
+   
+
     app.get("/menus", async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
